@@ -3,6 +3,7 @@ import { app } from "./app.js";
 import { db } from "./src/config/db.js";
 import { userRegister } from './src/controllers/user.controller.js';
 import { login } from './src/controllers/user.controller.js';
+import { requestOtp, verifyOtp } from './src/controllers/otp.controller.js';
 
 db().then(()=>{
     app.listen(process.env.PORT,()=>{
@@ -16,5 +17,7 @@ app.get("/",(req,res,next)=>{
     res.send("hello backend")
 })
 
-app.post("/register",userRegister);
-app.post("/login",login);
+// app.post("/api/auth/register",userRegister);
+// app.post("/api/auth/login",login);
+// app.post("/requestotp",requestOtp);
+// app.post("/verifyOtp",verifyOtp);

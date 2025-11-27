@@ -3,13 +3,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import jwt from "jsonwebtoken";
-import { createPasswordResetToken } from "../utils/createPasswordResetToken.js";
-import { sendPasswordResetEmail } from "../utils/SendPasswordResetEmail.js";
-import crypto from "crypto";
-
-const FORGOT_PASSWORD_TOKEN_EXPIRY_MS = process.env.RESET_PASSWORD_EXPIRES_MS
-  ? Number(process.env.RESET_PASSWORD_EXPIRES_MS)
-  : 15 * 60 * 1000; // 15 minutes default
 
 
 /**
@@ -201,98 +194,7 @@ const changePassword  = asyncHandler(async (req,res,next) => {
   
 })
 
-const forgotPassword = asyncHandler(async (req,res) => {
-  const {email} = req.body;
-
-  if(!email){
-    throw new ApiError(400,"Eamil is requied!");
-  }
-
-  const user = await User.findOne({email});
-  if(!user){
-    throw new ApiError(400,"user with this email not found!")
-  }
-
-  const {resetToken,hashedToken} = createPasswordResetToken();
-  user.resetPasswordToken = hashedToken;
-  user.resetPasswordExpires = Date.now() + FORGOT_PASSWORD_TOKEN_EXPIRY_MS;
-  await user.save();//{validateBeforeSave:false}
-   // Generate reset URL
-  const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}&userId=${user._id}`;
-
-  // Send email using the utility function
-  await sendPasswordResetEmail(email, resetUrl);
-   res.status(200).json({ message: "Password reset link sent to your email!" });
-})
-
-// const resetPassword = asyncHandler(async (req,res,next) => {
-//   const {token,userId,newPassword} = req.body;
-
-//   if(!token || !userId || !newPassword){
-//     throw new ApiError("token and username and newPassword are required")
-//   }
-
-//   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-//   const user = await User.findOne({
-//     _id:userId,
-//     resetPasswordToken:hashedToken,
-//     resetPasswordExpires:{ $gt: Date.now() },
-//   })
-
-//   if(!user){
-//     throw new ApiError(400,"token is expired or inavalid!");
-//   }
-//   user.password = newPassword;
-//   user.resetPasswordToken = null;
-//   user.resetPasswordExpires = null;
-
-//   await user.save();
-
-//   res.status(200).json(new ApiResponse(200,null,"password reseted successfully!"))
-
-  
-//})
-
-const resetPassword = asyncHandler(async (req, res) => {
-  const { token, userId, newPassword } = req.body;
-  console.log(token,userId,newPassword);
-  // validate inputs
-  if (!token || !userId || !newPassword) {
-    throw new ApiError(400, "token, userId and newPassword are required");
-  }
-
-  // hash incoming token to match stored hash
-  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-  // find user by hashed token and non-expired timestamp
-  const user = await User.findOne({
-    _id: userId,
-    resetPasswordToken: hashedToken,
-    //resetPasswordExpires: { $gt: Date.now() },
-  });
-
-  if (!user) {
-    throw new ApiError(400, "Token is invalid or has expired");
-  }
-
-  // set new password (assumes User.pre('save') hashes password)
-  user.password = newPassword;
-
-  // clear reset token fields
-  user.resetPasswordToken = undefined;
-  user.resetPasswordExpires = undefined;
-
-  // revoke stored refresh token(s) so other sessions are invalidated
-  // (optional but recommended)
-  user.refreshToken = "";
-
-  await user.save(); // will run validators and pre-save password hashing
-
-  return res.status(200).json(new ApiResponse(200, null, "Password reset successfully. Please log in with your new password."));
-});
-
-export {userRegister,login,logout,getCurrentUser,refreshAccessToken,changePassword,forgotPassword,resetPassword};
+export {userRegister,login,logout,getCurrentUser,refreshAccessToken,changePassword};
 
 
 
